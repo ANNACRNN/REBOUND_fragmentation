@@ -70,14 +70,6 @@ double get_mag(double x, double y, double z){
     return sqrt(pow(x,2)+pow(y,2)+pow(z,2));
         }   //return magnitude of vector
 
-double hill_radius(struct reb_simulation* const r, double x, double y, double z, double mass){
-    struct reb_particle* particles = r->particles;
-    return get_mag(x,y,z)*pow(mass/(3*particles[0].m), 1./3.);
-}
-
-
-
-
 int tot_no_frags = 0;
 void add_fragments(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
     struct reb_particle* target = &(r->particles[params->target]);
