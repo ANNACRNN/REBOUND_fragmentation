@@ -53,7 +53,6 @@ struct collision_params
     double Q_star;
     double vrel;
     double xrel;
-    double lastcollisiontime;
 }; 
 
 
@@ -171,7 +170,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         Slr1.r = pow((3*Slr1.m)/(4*M_PI*params->rho), 1./3.);
         sprintf(hash,"FRAG%d", tot_no_frags+1);
         Slr1.hash = reb_hash(hash);
-        Slr1.lastcollision = params->lastcollisiontime;
+        Slr1.lastcollision = r->t;
         
         mxsum[0] = mxsum[0] + Slr1.m*Slr1.x;
         mxsum[1] = mxsum[1] + Slr1.m*Slr1.y;    
@@ -203,7 +202,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         
 
         fragment.hash = reb_hash(hash);
-        fragment.lastcollision = params->lastcollisiontime;
+        fragment.lastcollision = r->t;
         mxsum[0] = mxsum[0] + fragment.m*fragment.x;
         mxsum[1] = mxsum[1] + fragment.m*fragment.y;    
         mxsum[2] = mxsum[2] + fragment.m*fragment.z;
@@ -407,7 +406,6 @@ void init_collision_params(struct collision_params* params){
     params->Q_star=0;
     params->vrel=0;
     params->xrel=0;
-    params->lastcollisiontime=0;
 }
 
 struct collision_params* create_collision_params(){
@@ -527,7 +525,6 @@ int get_collision_type(struct reb_simulation* const r, struct reb_collision c){
     params->separation_distance = separation_distance;
     params->V_esc = V_esc;
     params->vrel = sqrt(v2rel);
-    params->lastcollisiontime = r->t + r->dt;
     params->Mslr = 0;
     params->xrel = xrel;
     params->Mlr = Mlr;
