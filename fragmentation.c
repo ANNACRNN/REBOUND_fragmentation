@@ -15,13 +15,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
-const double min_frag_mass = 1.4e-8; 
-const double mass_limit = 2.8e4;  //maximum mass of bodies that are allowed to fragment.  Bodies with mass >= mass_limit only experience merging.
+const double min_frag_mass = 1.4e-8;
+const double mass_limit = 2.8e-4;  //maximum mass of bodies that are allowed to fragment
 
 
 #define MIN(a, b) ((a) > (b) ? (b) : (a))    ///< Returns the minimum of a and b
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    // Returns the maximum of a and b
+
+
 
 struct collision_params
 {
@@ -40,7 +41,6 @@ struct collision_params
     double rho;
     double cstar;
     double mubar;
-    double min_frag_mass;
     double mu;
     double QR;
     double QpRD;
@@ -54,7 +54,6 @@ struct collision_params
     double vrel;
     double xrel;
     double lastcollisiontime;
-    int max_no_frags;
 }; 
 
 
@@ -78,29 +77,26 @@ double hill_radius(struct reb_simulation* const r, double x, double y, double z,
 }
 
 
+
+
 int tot_no_frags = 0;
-void add_fragments(struct reb_simulation* const r, struct reb_collision c, struct collision_params params){
-    struct reb_particle* target = &(r->particles[params.target]);
-    struct reb_particle* projectile = &(r->particles[params.projectile]);
+void add_fragments(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
+    struct reb_particle* target = &(r->particles[params->target]);
+    struct reb_particle* projectile = &(r->particles[params->projectile]);
     struct reb_particle com = reb_get_com_of_pair(*target, *projectile);
 
     double initial_mass = target -> m + projectile -> m;
 
-    double remaining_mass = initial_mass - params.Mlr;
+    double remaining_mass = initial_mass - params->Mlr;
     
     double big_frags = 0;
-    if (params.Mslr > 0){
-        remaining_mass = remaining_mass -  params.Mslr;
+    if (params->Mslr > 0){
+        remaining_mass = remaining_mass -  params->Mslr;
         big_frags = 1;
     }
 
-    int no_frags = remaining_mass/params.min_frag_mass;  //fragments are broken up into equal sizes
+    int no_frags = remaining_mass/min_frag_mass;  //fragments are broken up into equal sizes
     double frag_mass = remaining_mass/no_frags;
-
-    if (no_frags > params.max_no_frags){
-        no_frags = params.max_no_frags;
-        frag_mass = remaining_mass/no_frags;
-    }
 
     int new_bodies = no_frags + big_frags;
 
@@ -111,7 +107,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     double mvsum[3] = {0,0,0};
     //target gets mass of Mlr and is assigned COM position and velocity;
 
-    target -> m = params.Mlr;
+    target -> m = params->Mlr;
     target->x = com.x;
     target->y = com.y;
     target->z = com.z;
@@ -134,13 +130,13 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
 
     double unit_vix, unit_viy, unit_viz, zx, zy, zz, z, ox, oy, oz, o;
 
-    unit_vix = params.Vix/params.vrel;  //unit vector parallel to target velocity
-    unit_viy = params.Viy/params.vrel;
-    unit_viz = params.Viz/params.vrel;
+    unit_vix = params->Vix/params->vrel;  //unit vector parallel to target velocity
+    unit_viy = params->Viy/params->vrel;
+    unit_viz = params->Viz/params->vrel;
 
-    zx = (params.Viy*params.dz - params.Viz*params.dy);                     // vector normal to the collision plane; vrel cross xrel
-    zy = (params.Viz*params.dx - params.Vix*params.dz);
-    zz = (params.Vix*params.dy - params.Viy*params.dx);
+    zx = (params->Viy*params->dz - params->Viz*params->dy);                     // vector normal to the collision plane; vrel cross xrel
+    zy = (params->Viz*params->dx - params->Vix*params->dz);
+    zz = (params->Vix*params->dy - params->Viy*params->dx);
 
     z = get_mag(zx, zy, zz);
 
@@ -149,9 +145,9 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     zz = zz/z;
 
 
-    ox = (zy*params.Viz - zz*params.Viy);                   // vector normal to target velocity in collision plane; z cross vrel
-    oy = (zz*params.Vix - zx*params.Viz);
-    oz = (zx*params.Viy - zy*params.Vix);
+    ox = (zy*params->Viz - zz*params->Viy);                   // vector normal to target velocity in collision plane; z cross vrel
+    oy = (zz*params->Vix - zx*params->Viz);
+    oz = (zx*params->Viy - zy*params->Vix);
 
     o = get_mag(ox, oy, oz);
 
@@ -160,23 +156,22 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     oz = oz/o;
 
 
-    double fragment_velocity = sqrt(1.1*pow(params.V_esc, 2) - 2*r->G * initial_mass*(1/rtot - 1/params.separation_distance));
+    double fragment_velocity = sqrt(1.1*pow(params->V_esc, 2) - 2*r->G * initial_mass*(1/rtot - 1/params->separation_distance));
 
     if (big_frags == 1){  //assign radii, positions and velocities to second largest remnant
         struct reb_particle Slr1 = {0};
-        Slr1.m = params.Mslr;
-        Slr1.x = com.x - params.separation_distance*cos(theta_inc*(0))*unit_vix - params.separation_distance*sin(theta_inc*(0))*ox;
-        Slr1.y = com.y - params.separation_distance*cos(theta_inc*(0))*unit_viy - params.separation_distance*sin(theta_inc*(0))*oy;
-        Slr1.z = com.z - params.separation_distance*cos(theta_inc*(0))*unit_viz - params.separation_distance*sin(theta_inc*(0))*oz;
+        Slr1.m = params->Mslr;
+        Slr1.x = com.x - params->separation_distance*cos(theta_inc*(0))*unit_vix - params->separation_distance*sin(theta_inc*(0))*ox;
+        Slr1.y = com.y - params->separation_distance*cos(theta_inc*(0))*unit_viy - params->separation_distance*sin(theta_inc*(0))*oy;
+        Slr1.z = com.z - params->separation_distance*cos(theta_inc*(0))*unit_viz - params->separation_distance*sin(theta_inc*(0))*oz;
 
         Slr1.vx = com.vx - fragment_velocity*cos(theta_inc*(0))*unit_vix - fragment_velocity*sin(theta_inc*(0))*ox;
         Slr1.vy = com.vy - fragment_velocity*cos(theta_inc*(0))*unit_viy - fragment_velocity*sin(theta_inc*(0))*oy;
         Slr1.vz = com.vz - fragment_velocity*cos(theta_inc*(0))*unit_viz - fragment_velocity*sin(theta_inc*(0))*oz;
-        Slr1.r = pow((3*Slr1.m)/(4*M_PI*params.rho), 1./3.);
-        s
-        (hash,"FRAG%d", tot_no_frags+1);
+        Slr1.r = pow((3*Slr1.m)/(4*M_PI*params->rho), 1./3.);
+        sprintf(hash,"FRAG%d", tot_no_frags+1);
         Slr1.hash = reb_hash(hash);
-        Slr1.lastcollision = params.lastcollisiontime;
+        Slr1.lastcollision = params->lastcollisiontime;
         
         mxsum[0] = mxsum[0] + Slr1.m*Slr1.x;
         mxsum[1] = mxsum[1] + Slr1.m*Slr1.y;    
@@ -193,22 +188,22 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     int new_beginning_frag_index = tot_no_frags+big_frags+1;
     for (int i=(new_beginning_frag_index); i<(new_beginning_frag_index+no_frags); i++){          //add fragments
         struct reb_particle fragment = {0};
-        if (frag_mass >= params.min_frag_mass){
+        if (frag_mass >= min_frag_mass){
         fragment.m = frag_mass;                  
 
-        fragment.x = com.x - params.separation_distance*cos(theta_inc*(i))*unit_vix - params.separation_distance*sin(theta_inc*(i))*ox;
-        fragment.y = com.y - params.separation_distance*cos(theta_inc*(i))*unit_viy - params.separation_distance*sin(theta_inc*(i))*oy;
-        fragment.z = com.z - params.separation_distance*cos(theta_inc*(i))*unit_viz - params.separation_distance*sin(theta_inc*(i))*oz;
+        fragment.x = com.x - params->separation_distance*cos(theta_inc*(i))*unit_vix - params->separation_distance*sin(theta_inc*(i))*ox;
+        fragment.y = com.y - params->separation_distance*cos(theta_inc*(i))*unit_viy - params->separation_distance*sin(theta_inc*(i))*oy;
+        fragment.z = com.z - params->separation_distance*cos(theta_inc*(i))*unit_viz - params->separation_distance*sin(theta_inc*(i))*oz;
 
         fragment.vx = com.vx - fragment_velocity*cos(theta_inc*(i))*unit_vix - fragment_velocity*sin(theta_inc*(i))*ox;
         fragment.vy = com.vy - fragment_velocity*cos(theta_inc*(i))*unit_viy - fragment_velocity*sin(theta_inc*(i))*oy;
         fragment.vz = com.vz - fragment_velocity*cos(theta_inc*(i))*unit_viz - fragment_velocity*sin(theta_inc*(i))*oz;
-        fragment.r = pow((3*fragment.m)/(4*M_PI*params.rho), 1./3.);
+        fragment.r = pow((3*fragment.m)/(4*M_PI*params->rho), 1./3.);
         sprintf(hash, "FRAG%d", i);
         
 
         fragment.hash = reb_hash(hash);
-        fragment.lastcollision = params.lastcollisiontime;
+        fragment.lastcollision = params->lastcollisiontime;
         mxsum[0] = mxsum[0] + fragment.m*fragment.x;
         mxsum[1] = mxsum[1] + fragment.m*fragment.y;    
         mxsum[2] = mxsum[2] + fragment.m*fragment.z;
@@ -235,12 +230,11 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     target -> vx += voff[0]; 
     target -> vy += voff[1]; 
     target -> vz += voff[2]; 
-    target->r = pow((3*target->m)/(4*M_PI*params.rho), 1./3.);
+    target->r = pow((3*target->m)/(4*M_PI*params->rho), 1./3.);
 
     for (int i=(tot_no_frags-new_bodies)+1; i<(tot_no_frags+1); i++){ 
         char frag[10];
-        s
-        (frag, "FRAG%d", i);
+        sprintf(frag, "FRAG%d", i);
         reb_get_particle_by_hash(r, reb_hash(frag))->x += xoff[0];
         reb_get_particle_by_hash(r, reb_hash(frag))->y += xoff[1];
         reb_get_particle_by_hash(r, reb_hash(frag))->z += xoff[2];
@@ -255,7 +249,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
 }
 
 
-void elastic_bounce(struct reb_simulation* const r, struct reb_collision c, struct collision_params params){
+void elastic_bounce(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
     struct reb_particle* particles = r->particles;
 
     int i = c.p1;   // i is target particle, j is projectile
@@ -270,27 +264,27 @@ void elastic_bounce(struct reb_simulation* const r, struct reb_collision c, stru
 
     msum = particles[i].m + particles[j].m;
     //convert into spherical coordinates
-    r_diff = sqrt(pow(params.xrel, 2));
-    p = sqrt(pow(params.dx,2) + pow(params.dy,2));
-    vr = get_dot(params.dx, params.dy, params.dz, params.Vix, params.Viy, params.Viz)/r_diff;
+    r_diff = sqrt(pow(params->xrel, 2));
+    p = sqrt(pow(params->dx,2) + pow(params->dy,2));
+    vr = get_dot(params->dx, params->dy, params->dz, params->Vix, params->Viy, params->Viz)/r_diff;
 
-    vtheta = p*params.dz/r_diff - params.dz*(params.dx*params.Vix + params.dy*params.Viy)/(r_diff*p);
-    vphi = (params.dx*params.Viy - params.dy*params.Vix)/p;
+    vtheta = p*params->dz/r_diff - params->dz*(params->dx*params->Vix + params->dy*params->Viy)/(r_diff*p);
+    vphi = (params->dx*params->Viy - params->dy*params->Vix)/p;
 
     //convert back into cartesian coordinates using -vr
-    temp = p*-vr - params.dz*vtheta; 
+    temp = p*-vr - params->dz*vtheta; 
 
-    vrelx = params.dx*temp/(r_diff*p) - params.dy*vphi/p;
-    vrely = params.dy*temp/(r_diff*p) + params.dx*vphi/p;
-    vrelz = params.dz*vr + p*vtheta/r_diff;
+    vrelx = params->dx*temp/(r_diff*p) - params->dy*vphi/p;
+    vrely = params->dy*temp/(r_diff*p) + params->dx*vphi/p;
+    vrelz = params->dz*vr + p*vtheta/r_diff;
 
-    particles[i].x = com.x + particles[j].m*params.dx/msum;
-    particles[i].y = com.y + particles[j].m*params.dy/msum;
-    particles[i].z = com.z + particles[j].m*params.dz/msum;
+    particles[i].x = com.x + particles[j].m*params->dx/msum;
+    particles[i].y = com.y + particles[j].m*params->dy/msum;
+    particles[i].z = com.z + particles[j].m*params->dz/msum;
 
-    particles[j].x = com.x - particles[i].m*params.dx/msum;
-    particles[j].y = com.y - particles[i].m*params.dy/msum;
-    particles[j].z = com.z - particles[i].m*params.dz/msum;
+    particles[j].x = com.x - particles[i].m*params->dx/msum;
+    particles[j].y = com.y - particles[i].m*params->dy/msum;
+    particles[j].z = com.z - particles[i].m*params->dz/msum;
 
     particles[i].vx = com.vx + particles[j].m*vrelx/msum;
     particles[i].vy = com.vy + particles[j].m*vrely/msum;
@@ -300,22 +294,22 @@ void elastic_bounce(struct reb_simulation* const r, struct reb_collision c, stru
     particles[j].vy = com.vy - particles[i].m*vrely/msum;
     particles[j].vz = com.vz - particles[i].m*vrelz/msum;
 
-    particles[i].x = com.x + particles[j].m*params.dx/msum + particles[i].vx*r->dt;
-    particles[i].y = com.y + particles[j].m*params.dy/msum + particles[i].vy*r->dt;
-    particles[i].z = com.z + particles[j].m*params.dz/msum + particles[i].vz*r->dt;
+    particles[i].x = com.x + particles[j].m*params->dx/msum + particles[i].vx*r->dt;
+    particles[i].y = com.y + particles[j].m*params->dy/msum + particles[i].vy*r->dt;
+    particles[i].z = com.z + particles[j].m*params->dz/msum + particles[i].vz*r->dt;
 
-    particles[j].x = com.x - particles[i].m*params.dx/msum - particles[j].vx*r->dt;
-    particles[j].y = com.y - particles[i].m*params.dy/msum - particles[j].vy*r->dt;
-    particles[j].z = com.z - particles[i].m*params.dz/msum - particles[j].vz*r->dt;
+    particles[j].x = com.x - particles[i].m*params->dx/msum - particles[j].vx*r->dt;
+    particles[j].y = com.y - particles[i].m*params->dy/msum - particles[j].vy*r->dt;
+    particles[j].z = com.z - particles[i].m*params->dz/msum - particles[j].vz*r->dt;
 
     return;
 }
 
 
 
-int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct collision_params params){  //also includes partial accretion.  Mlr = M_target.  Projectile is erroded.
-        struct reb_particle* target = &(r->particles[params.target]);
-        struct reb_particle* projectile = &(r->particles[params.projectile]);
+int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){  //also includes partial accretion.  Mlr = M_target.  Projectile is erroded.
+        struct reb_particle* target = &(r->particles[params->target]);
+        struct reb_particle* projectile = &(r->particles[params->projectile]);
 
 
         int swap = 2;
@@ -327,17 +321,17 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
             swap = 1;
                 }
 
-        double phi = 2*acos((params.l-projectile->r)/projectile->r);
+        double phi = 2*acos((params->l-projectile->r)/projectile->r);
         double A_interact = pow(projectile->r, 2)*((M_PI-(phi-sin(phi))/2.));  //Leinhardt Eq. 46;
-        double L_interact = 2.*pow(pow(target->r,2)-(pow(target->r-params.l/2.,2)), .5);   //Leinhardt Eq. 47
+        double L_interact = 2.*pow(pow(target->r,2)-(pow(target->r-params->l/2.,2)), .5);   //Leinhardt Eq. 47
         double beta = (A_interact*L_interact)/target->m;  //Chambers Eq. 11
-        double Rc1 = pow(3./(4.*M_PI*params.rho1)*(beta*target->m + projectile->m), 1./3.); 
-        double Q0 = .8*params.cstar*M_PI*params.rho1*r->G*pow(Rc1, 2);
+        double Rc1 = pow(3./(4.*M_PI*params->rho1)*(beta*target->m + projectile->m), 1./3.); 
+        double Q0 = .8*params->cstar*M_PI*params->rho1*r->G*pow(Rc1, 2);
         double gamma = (beta*target->m)/projectile->m;
         double Q_star = (pow(1+gamma, 2)/4*gamma)* Q0;
 
         double mu = (beta*target->m*projectile->m)/(beta*target->m+projectile->m);  //Chambers Eq. 13
-        double Q = .5*(mu*pow(params.Vi,2))/(beta*target->m+projectile->m); //Chambers Eq. 12
+        double Q = .5*(mu*pow(params->Vi,2))/(beta*target->m+projectile->m); //Chambers Eq. 12
 
 
         double c1 = 2.43;
@@ -346,22 +340,22 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
         double c4 = 1.08;
 
         double big_gamma = pow((1-gamma)/(1+gamma), 2);
-        double theta = acos(params.vrel/params.xrel);
-        double v_crit = params.V_esc*(c1*big_gamma*(pow(1-sin(theta), 5./2.)) + c2*big_gamma + c3*pow(1-sin(theta), 5./2.) + c4);
+        double theta = acos(params->vrel/params->xrel);
+        double v_crit = params->V_esc*(c1*big_gamma*(pow(1-sin(theta), 5./2.)) + c2*big_gamma + c3*pow(1-sin(theta), 5./2.) + c4);
         double targ_m = target->m;
         double imp_m = projectile->m;
 
 
-        if (params.Vi <= v_crit || targ_m + imp_m - params.Mlr < params.min_frag_mass){             //if impact velocity is low, the hit-and-run results in a merger.
+        if (params->Vi <= v_crit || targ_m + imp_m - params->Mlr < min_frag_mass){             //if impact velocity is low, the hit-and-run results in a merger.
             reb_collision_resolve_merge(r,c);
             return swap;
         }
 
 
-        if (params.Mlr < targ_m){  //erosion of target with fragments            
-            double new_Mlr = MAX(params.Mlr, params.min_frag_mass);
-            params.Mlr = new_Mlr;
-            params.Mslr = 0;
+        if (params->Mlr < targ_m){  //erosion of target with fragments            
+            double new_Mlr = MAX(params->Mlr, min_frag_mass);
+            params->Mlr = new_Mlr;
+            params->Mslr = 0;
             add_fragments(r,c,params);
             return swap;
         }
@@ -372,24 +366,59 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
             Mlr_dag = (beta*targ_m + imp_m)*(1 - Q/ (2*Q_star));
         }
 
-        if (Mlr_dag < params.min_frag_mass || (imp_m - Mlr_dag) < params.min_frag_mass){ 
+        if (Mlr_dag < min_frag_mass || (imp_m - Mlr_dag) < min_frag_mass){ 
             elastic_bounce(r,c, params);
             swap = 0;
             return swap;} //projectile is not erroded, both particles remain in sim
 
         else{
-        params.Mslr = Mlr_dag;
+        params->Mslr = Mlr_dag;
         add_fragments(r,c,params);
         }
 
         return swap;
     }
 
+void init_collision_params(struct collision_params* params){
+    params->target=0;
+    params->projectile=0;
+    params->dx=0;
+    params->dy=0;
+    params->dz=0;
+    params->b=0;
+    params->Vix=0;
+    params->Viy=0;
+    params->Viz=0;
+    params->Vi=0;
+    params->l=0;
+    params->rho1=0;
+    params->rho=0;
+    params->cstar=0;
+    params->mubar=0;
+    params->mu=0;
+    params->QR=0;
+    params->QpRD=0;
+    params->V_esc=0;
+    params->separation_distance=0;
+    params->Mlr=0;
+    params->Mslr=0;
+    params->Q=0;
+    params->Mlr_dag=0;
+    params->Q_star=0;
+    params->vrel=0;
+    params->xrel=0;
+    params->lastcollisiontime=0;
+}
 
+struct collision_params* create_collision_params(){
+    struct collision_params* params = calloc(1,sizeof(struct collision_params));
+    init_collision_params(params);
+    return params;
+}
 
 int get_collision_type(struct reb_simulation* const r, struct reb_collision c){
     struct reb_particle* particles = r->particles;
-    struct collision_params params;
+    struct collision_params* params = create_collision_params();
     const double G = r->G;
     int swap = 2;
     int i = c.p1;   // i is target particle, j is projectile
@@ -476,34 +505,32 @@ int get_collision_type(struct reb_simulation* const r, struct reb_collision c){
     }
 
 
-    double separation_distance = 4 * (targ_r + imp_r);  //seperation distance of fragments.  My be userdefined, but this is the default.
+    double separation_distance = 4 * (targ_r + imp_r);  //seperation distance of fragments.  Should be userdefined but this is what chambers uses
 ///POPULATE STRUCT OBJECTS
-    params.min_frag_mass = min_frag_mass;
-    params.target = i;
-    params.projectile =j;
-    params.dx = dx;
-    params.dy = dy;
-    params.dz = dz;
-    params.b = b;
-    params.Vix = Vix;
-    params.Viy = Viy;
-    params.Viz = Viy;
-    params.Vi = Vi;
-    params.l = l;
-    params.rho1 = rho1;
-    params.cstar = cstar;
-    params.mubar = mubar;
-    params.mu = mu;
-    params.Q = Q;
-    params.rho = 5.05e6;  //3 g/cm^3 in solar mass/AU^3
-    params.separation_distance = separation_distance;
-    params.V_esc = V_esc;
-    params.vrel = sqrt(v2rel);
-    params.lastcollisiontime = r->t + r->dt;
-    params.Mslr = 0;
-    params.xrel = xrel;
-    params.Mlr = Mlr;
-    params.max_no_frags = 100;  //maximum number of frags allowed in each collision, too many causes errors?
+    params->target = i;
+    params->projectile =j;
+    params->dx = dx;
+    params->dy = dy;
+    params->dz = dz;
+    params->b = b;
+    params->Vix = Vix;
+    params->Viy = Viy;
+    params->Viz = Viy;
+    params->Vi = Vi;
+    params->l = l;
+    params->rho1 = rho1;
+    params->cstar = cstar;
+    params->mubar = mubar;
+    params->mu = mu;
+    params->Q = Q;
+    params->rho = 5.05e6;  //3 g/cm^3 in solar mass/AU^3
+    params->separation_distance = separation_distance;
+    params->V_esc = V_esc;
+    params->vrel = sqrt(v2rel);
+    params->lastcollisiontime = r->t + r->dt;
+    params->Mslr = 0;
+    params->xrel = xrel;
+    params->Mlr = Mlr;
 
 
     if (Vi <= V_esc){
@@ -512,12 +539,12 @@ int get_collision_type(struct reb_simulation* const r, struct reb_collision c){
     }
     else{
         if (b < targ_r){   //non-grazing regime  
-            if (M_tot - params.Mlr < params.min_frag_mass){
+            if (M_tot - params->Mlr < min_frag_mass){
                 reb_collision_resolve_merge(r,c);
                 return swap;
             }
             else {
-            params.Mlr = MAX(Mlr, params.min_frag_mass);
+            params->Mlr = MAX(Mlr, min_frag_mass);
             add_fragments(r,c,params);
             }
         }
@@ -527,6 +554,7 @@ int get_collision_type(struct reb_simulation* const r, struct reb_collision c){
         }
     return swap;    
 }
+
 
 
 int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_collision c){
@@ -548,5 +576,4 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
         reb_collision_resolve_merge(r,c);
         return 2;
     }  
-    return get_collision_type(r,c);  //this will be either 0 to remove no particles, 1 to remove particle c.p1, or 2 to remove particle c.p2.
 }
