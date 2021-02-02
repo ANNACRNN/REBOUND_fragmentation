@@ -1,4 +1,4 @@
-/* <A fragmentation module to work with a REBOUND problem.c file by Anna Childs>
+/* A fragmentation module for the N-body integrator REBOUND by Anna Childs.
     Copyright (C) 2021 Anna Childs
 
     This program is free software: you can redistribute it and/or modify
