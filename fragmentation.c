@@ -15,9 +15,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-const double min_frag_mass = 1.4e-7;
-const double mass_limit = 2.8e-4;  //maximum mass of bodies that are allowed to fragment
-const int max_no_frags = 100;  //maximum number of fragments allowed during a single collision
+#define min_frag_mass 1.4e-7
+#define mass_limit 2.8e-4  //maximum mass of bodies that are allowed to fragment
+#define max_no_frags 100  //maximum number of fragments allowed during a single collision
 
 #define MIN(a, b) ((a) > (b) ? (b) : (a))    ///< Returns the minimum of a and b
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    // Returns the maximum of a and b
