@@ -87,15 +87,11 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         remaining_mass = remaining_mass -  params->Mslr;
         big_frags = 1;
     }
+    
     double Mlr = params->Mlr;
     double mass_ratio = remaining_mass/min_frag_mass;  //fragments are broken up into equal sizes
     int no_frags = floor(mass_ratio);
     double frag_mass = remaining_mass/no_frags;
-    if (frag_mass>params->Mlr){  //this may happen if the mass ratio is right below and integer value (i.e 1.999...)
-        params->Mlr = frag_mass;
-        frag_mass = Mlr;
-    }
-
 
     if (params->Mlr > target->m){ //partial accretion
         params->collision_type=2;} 
