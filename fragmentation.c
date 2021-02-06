@@ -414,7 +414,6 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
 
 void print_collision_array(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){  
 //0=elastic bounce, 1=merger, 2=partial eaccretion, 3=partial erosion, 4=supercat
-    printf("ENTER COLLISION ARRAY\n");
     FILE* of = fopen("collision_report.txt","a+");    //print warning for existing file 
     fprintf(of, "%e\t", r->t);     
     fprintf(of, "%d\t", params->collision_type);                  
