@@ -1,20 +1,3 @@
-/* A fragmentation module for the N-body integrator REBOUND by Anna Childs.
-    Copyright (C) 2021 Anna Childs
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
 #define min_frag_mass 1.4e-7
 #define mass_limit 2.8e-4  //maximum mass of bodies that are allowed to fragment
 #define max_no_frags 100  //maximum number of fragments allowed during a single collision
@@ -71,6 +54,10 @@ double get_mag(double x, double y, double z){
     return sqrt(pow(x,2)+pow(y,2)+pow(z,2));
         }   //return magnitude of vector
 
+double round(double var){
+    double value = (int)(var*10000+.005);
+    return (double)value/10000;
+}
 
 int fragment_hashes[max_no_frags];
 int tot_no_frags = 0;
@@ -87,10 +74,8 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         remaining_mass = remaining_mass -  params->Mslr;
         big_frags = 1;
     }
-    
-    double Mlr = params->Mlr;
-    double mass_ratio = remaining_mass/min_frag_mass;  //fragments are broken up into equal sizes
-    int no_frags = floor(mass_ratio);
+
+    int no_frags = remaining_mass/min_frag_mass;  //fragments are broken up into equal sizes
     double frag_mass = remaining_mass/no_frags;
 
     if (params->Mlr > target->m){ //partial accretion
@@ -165,7 +150,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
 
 
     double fragment_velocity = sqrt(1.1*pow(params->V_esc, 2) - 2*r->G * initial_mass*(1/rtot - 1/params->separation_distance));
-
+    
     if (big_frags == 1){  //assign radii, positions and velocities to second largest remnant
         struct reb_particle Slr1 = {0};
         Slr1.m = params->Mslr;
@@ -221,8 +206,11 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
                                     }
                                 }
     tot_no_frags += big_frags+no_frags;
+
+
+    //Ensure momentum are conserved
+
     
-    //Conserve momentum   
     double xoff[3] = {com.x - mxsum[0]/initial_mass, com.y - mxsum[1]/initial_mass, com.z - mxsum[2]/initial_mass};
     double voff[3] = {com.vx - mvsum[0]/initial_mass, com.vy - mvsum[1]/initial_mass, com.vz - mvsum[2]/initial_mass};
 
@@ -253,13 +241,8 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
 void elastic_bounce(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
     struct reb_particle* particles = r->particles;
 
-    int i = c.p1;   // i is target particle, j is projectile
-    int j = c.p2; 
-
-    if (particles[i].m<particles[j].m){        //particle with greater mass is the target; i = target, j = projectile
-        i = c.p2;
-        j = c.p1;
-                }
+    int i = params->target;
+    int j= params->projectile;
     struct reb_particle com = reb_get_com_of_pair(particles[i], particles[j]);
     double msum, r_diff,p,vr,vtheta, vphi,temp, vrelx,vrely, vrelz;
 
@@ -306,19 +289,9 @@ void elastic_bounce(struct reb_simulation* const r, struct reb_collision c, stru
     return;
 }
 
-int merge(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
-    int swap = 2;
-    int i = c.p1;
-    int j = c.p2;   //make sure projectile is the particle being removed
-
-    if (r->particles[i].m < r->particles[j].m){
-        swap = 1;
-        j = c.p1;  //make sure projectile is the particle being removed
-        i = c.p2;   
-            }
-
-    struct reb_particle* pi = &(r->particles[i]);
-    struct reb_particle* pj = &(r->particles[j]);
+void merge(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
+    struct reb_particle* pi = &(r->particles[params->target]);
+    struct reb_particle* pj = &(r->particles[params->projectile]);
 
     double invmass = 1.0/(pi->m + pj->m);
     
@@ -333,7 +306,7 @@ int merge(struct reb_simulation* const r, struct reb_collision c, struct collisi
     pi->r  = pow(pow(pi->r,3.)+pow(pj->r,3.),1./3.);
     pi->lastcollision = r->t;
 
-    return swap; // Remove particle p2 from simulation if swap = 0, else remove p1.
+    return; // 
 }
 
 int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){  //also includes partial accretion.  Mlr = M_target.  Projectile is erroded.
@@ -363,7 +336,7 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
         double Q = .5*(mu*pow(params->Vi,2))/(beta*target->m+projectile->m); //Chambers Eq. 12
 
 
-        double c1 = 2.43;       //values from Stewart & Leinhardt 2012
+        double c1 = 2.43;
         double c2 = -0.0408;
         double c3 = 1.86;
         double c4 = 1.08;
@@ -482,19 +455,6 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     struct reb_particle* particles = r->particles;
     struct collision_params* params = create_collision_params();
 
-//merge particles if they collide with a body above the mass limit
-    if (particles[j].m >= mass_limit){
-        merge(r,c, params);
-        return 1;
-    }
-
-    if (particles[i].m >= mass_limit){
-        merge(r,c, params);
-        return 2;
-    }  
-    
-
-
     double imp_r = particles[j].r;
     double targ_r = particles[i].r;
     double R_tot = imp_r + targ_r;
@@ -541,8 +501,8 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     double gamma = imp_m/targ_m;  //Chambers Eq. 6
     if (gamma > 1){gamma = targ_m/imp_m;}
 
-    const double cstar = 1.8; 
-    const double mubar = 0.36;
+    const double cstar = 1.8;      //user defined variable, default taken from paper
+    const double mubar = 0.36;    // user defined variable, default taken from paper
     double rho1 = 1000;         //constant density in kg/cm^3, DO NOT CHANGE
     if (r->G == 1){rho1 = 1.684e12;}
     
@@ -551,7 +511,7 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     double Rc1 = pow((M_tot*3)/(4*M_PI*rho1), 1./3.);  //Chambers Eq. 4, combined radius of target and projectile with constant density
     double Q0 = .8*cstar*M_PI*rho1*r->G*pow(Rc1,2);  //Chambers Eq. 3, critical value of impact energy for head-on collisions
     double Q_star = pow(mu/alphamu, 1.5)*(pow(1+gamma, 2)/ 4*gamma)*Q0;  //Chambers Eq. 5, critical value for oblique or different mass collisons.  
-    if (alpha == 0.0){Q_star = 6364136223846793005.0;} //big number
+    if (alpha == 0.0){Q_star = 6364136223846793005.0;}
     if (b == 0 && imp_m == targ_m){
         Q_star = Q0;
     }
@@ -565,7 +525,7 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     }
 
 
-    double separation_distance = 4 * (targ_r + imp_r);  //separation distance of fragments.  Can be userdefined but this is what Chambers uses.
+    double separation_distance = 4 * (targ_r + imp_r);  //seperation distance of fragments.  Should be userdefined but this is what chambers uses
 ///POPULATE STRUCT OBJECTS
     params->target = i;
     params->projectile =j;
@@ -591,30 +551,35 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     params->xrel = xrel;
     params->Mlr = Mlr;
 
-    if (Vi <= V_esc){
+    //merge particles if they collide with a body above the mass limit
+    if (particles[i].m >= mass_limit || particles[j].m >= mass_limit){
         params->collision_type = 1;
         merge(r,c, params);
-        print_collision_array(r,c,params);
-        return swap;
     }
+
+
     else{
-        if (b < targ_r){   //non-grazing regime  
-            if (M_tot - params->Mlr < min_frag_mass){
-                params->collision_type = 1;
-                merge(r,c,params);
-                print_collision_array(r,c,params);
-                return swap;
+        if (Vi <= V_esc){
+            params->collision_type = 1;
+            merge(r,c, params);
+        }
+        else{
+            if (b < targ_r){   //non-grazing regime  
+                if (M_tot - params->Mlr < min_frag_mass){
+                    params->collision_type = 1;
+                    merge(r,c,params);
+                }
+                else {
+                params->collision_type = 4;
+                params->Mlr = MAX(Mlr, min_frag_mass);
+                add_fragments(r,c,params);
+                }
             }
-            else {
-            params->collision_type = 4;
-            params->Mlr = MAX(Mlr, min_frag_mass);
-            add_fragments(r,c,params);
+            if (b >= targ_r){  //Chambers Eq. 9, hit and run criteria, grazing regime
+                swap = hit_and_run(r,c,params);
             }
-        }
-        if (b >= targ_r){  //Chambers Eq. 9, hit and run criteria, grazing regime
-            swap = hit_and_run(r,c,params);
-        }
-        }
-    print_collision_array(r,c,params);
-    return swap;    
+            } 
+    } 
+    print_collision_array(r,c,params);  
+    return swap;
 }
