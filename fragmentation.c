@@ -348,6 +348,13 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
         double imp_m = projectile->m;
 
 
+        if (targ_m + imp_m - params->Mlr < min_frag_mass){    //if fragment mass is < min frag mass collision results in an elastic bounce
+            params->collision_type=0;
+            elastic_bounce(r,c, params);
+            swap = 0;
+            return swap;
+        }
+
         if (params->Vi <= v_crit || targ_m + imp_m - params->Mlr < min_frag_mass){             //if impact velocity is low, the hit-and-run results in a merger.
             params->collision_type = 1;          
             merge(r,c,params);
