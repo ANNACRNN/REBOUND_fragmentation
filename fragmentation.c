@@ -5,7 +5,6 @@
 #define MIN(a, b) ((a) > (b) ? (b) : (a))    ///< Returns the minimum of a and b
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    // Returns the maximum of a and b
 
-
 struct collision_params
 {
     int target;
@@ -39,7 +38,6 @@ struct collision_params
     int no_frags;
 }; 
 
-
 void make_vector(double x1, double y1, double z1, double x2, double y2, double z2, double *x, double*y, double*z){   //Galilean transform
     *x = x2-x1;
     *y = y2-y1;
@@ -54,11 +52,6 @@ double get_mag(double x, double y, double z){
     return sqrt(pow(x,2)+pow(y,2)+pow(z,2));
         }   //return magnitude of vector
 
-double round(double var){
-    double value = (int)(var*10000+.005);
-    return (double)value/10000;
-}
-
 int fragment_hashes[max_no_frags];
 int tot_no_frags = 0;
 void add_fragments(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
@@ -68,7 +61,6 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
 
     double initial_mass = target -> m + projectile -> m;
     double remaining_mass = initial_mass - params->Mlr;
-    if (remaining_mass==0.0){exit(0);}
     int big_frags = 0;
     if (params->Mslr > 0){
         remaining_mass = remaining_mass -  params->Mslr;
@@ -119,8 +111,6 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     mvsum[2] = mvsum[2] + target->m*target->vz;         
     
     double theta_inc = (2*M_PI)/new_bodies;
-    
-
     double unit_vix, unit_viy, unit_viz, zx, zy, zz, z, ox, oy, oz, o;
 
     unit_vix = params->Vix/params->vrel;  //unit vector parallel to target velocity
@@ -137,7 +127,6 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     zy = zy/z;
     zz = zz/z;
 
-
     ox = (zy*params->Viz - zz*params->Viy);                   // vector normal to target velocity in collision plane; z cross vrel
     oy = (zz*params->Vix - zx*params->Viz);
     oz = (zx*params->Viy - zy*params->Vix);
@@ -147,7 +136,6 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     ox = ox/o;      //unit vector
     oy = oy/o;
     oz = oz/o;
-
 
     double fragment_velocity = sqrt(1.1*pow(params->V_esc, 2) - 2*r->G * initial_mass*(1/rtot - 1/params->separation_distance));
     
@@ -207,10 +195,8 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
                                 }
     tot_no_frags += big_frags+no_frags;
 
-
     //Ensure momentum are conserved
-
-    
+   
     double xoff[3] = {com.x - mxsum[0]/initial_mass, com.y - mxsum[1]/initial_mass, com.z - mxsum[2]/initial_mass};
     double voff[3] = {com.vx - mvsum[0]/initial_mass, com.vy - mvsum[1]/initial_mass, com.vz - mvsum[2]/initial_mass};
 
@@ -237,30 +223,29 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     return;
 }
 
-
 void elastic_bounce(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
     struct reb_particle* particles = r->particles;
 
     int i = params->target;
     int j= params->projectile;
     struct reb_particle com = reb_get_com_of_pair(particles[i], particles[j]);
-    double msum, r_diff,p,vr,vtheta, vphi,temp, vrelx,vrely, vrelz;
+    double msum, dr,p,vr,vtheta, vphi,temp, vrelx,vrely, vrelz;
 
     msum = particles[i].m + particles[j].m;
     //convert into spherical coordinates
-    r_diff = sqrt(pow(params->xrel, 2));
+    dr= params->xrel;
     p = sqrt(pow(params->dx,2) + pow(params->dy,2));
-    vr = get_dot(params->dx, params->dy, params->dz, params->Vix, params->Viy, params->Viz)/r_diff;
+    vr = get_dot(params->dx, params->dy, params->dz, params->Vix, params->Viy, params->Viz)/dr;
 
-    vtheta = p*params->dz/r_diff - params->dz*(params->dx*params->Vix + params->dy*params->Viy)/(r_diff*p);
+    vtheta = p*params->Viz/dr - params->dz*(params->dx*params->Vix + params->dy*params->Viy)/(dr*p);
     vphi = (params->dx*params->Viy - params->dy*params->Vix)/p;
 
     //convert back into cartesian coordinates using -vr
     temp = p*-vr - params->dz*vtheta; 
 
-    vrelx = params->dx*temp/(r_diff*p) - params->dy*vphi/p;
-    vrely = params->dy*temp/(r_diff*p) + params->dx*vphi/p;
-    vrelz = params->dz*vr + p*vtheta/r_diff;
+    vrelx = params->dx*temp/(dr*p) - params->dy*vphi/p;
+    vrely = params->dy*temp/(dr*p) + params->dx*vphi/p;
+    vrelz = params->dz*vr + p*vtheta/dr;
 
     particles[i].x = com.x + particles[j].m*params->dx/msum;
     particles[i].y = com.y + particles[j].m*params->dy/msum;
@@ -313,7 +298,6 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
         struct reb_particle* target = &(r->particles[params->target]);
         struct reb_particle* projectile = &(r->particles[params->projectile]);
 
-
         int swap = 2;
         int i = c.p1;
         int j = c.p2;   //make sure projectile is the particle being removed
@@ -335,7 +319,6 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
         double mu = (beta*target->m*projectile->m)/(beta*target->m+projectile->m);  //Chambers Eq. 13
         double Q = .5*(mu*pow(params->Vi,2))/(beta*target->m+projectile->m); //Chambers Eq. 12
 
-
         double c1 = 2.43;
         double c2 = -0.0408;
         double c3 = 1.86;
@@ -347,25 +330,15 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
         double targ_m = target->m;
         double imp_m = projectile->m;
 
-
-        if (targ_m + imp_m - params->Mlr < min_frag_mass){    //if fragment mass is < min frag mass collision results in an elastic bounce
-            params->collision_type=0;
-            elastic_bounce(r,c, params);
-            swap = 0;
-            return swap;
-        }
-
-        if (params->Vi <= v_crit || targ_m + imp_m - params->Mlr < min_frag_mass){             //if impact velocity is low, the hit-and-run results in a merger.
+        if (params->Vi <= v_crit){             //if impact velocity is low, the hit-and-run results in a merger.
             params->collision_type = 1;          
             merge(r,c,params);
             return swap;
         }
 
-
         if (params->Mlr < targ_m){  //erosion of target with fragments            
             params->collision_type = 3;
-            double new_Mlr = MAX(params->Mlr, min_frag_mass);
-            params->Mlr = new_Mlr;
+            params->Mlr = MAX(params->Mlr, min_frag_mass);
             params->Mslr = 0;
             add_fragments(r,c,params);
             return swap;
@@ -377,23 +350,26 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
             Mlr_dag = (beta*targ_m + imp_m)*(1 - Q/ (2*Q_star));
         }
 
-        if (Mlr_dag < min_frag_mass || (imp_m - Mlr_dag) < min_frag_mass){ 
-            params->collision_type=0;
-            elastic_bounce(r,c, params);
-            swap = 0;
-            return swap;} //projectile is not erroded, both particles remain in sim
-
-        else{
-        params->collision_type = 2;
-        params->Mslr = Mlr_dag;
-        add_fragments(r,c,params);
+        if (params->Mlr >= targ_m){ 
+            params->Mlr = targ_m;
+            Mlr_dag = MAX(Mlr_dag, min_frag_mass);
+            if (imp_m - Mlr_dag < min_frag_mass){ //elastic bounce
+                params->collision_type=0;
+                elastic_bounce(r,c, params);
+                swap = 0;
+                return swap;
+            }
+            else{
+                params->collision_type = 3; //partial erosion of projectile
+                params->Mslr = Mlr_dag;
+                add_fragments(r,c,params);
+            }
         }
-
         return swap;
     }
 
 void print_collision_array(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){  
-//0=elastic bounce, 1=merger, 2=partial eaccretion, 3=partial erosion, 4=supercat
+//0=elastic bounce, 1=merger, 2=partial accretion, 3=partial erosion, 4=supercat
     FILE* of = fopen("collision_report.txt","a+");    //print warning for existing file 
     fprintf(of, "%e\t", r->t);     
     fprintf(of, "%d\t", params->collision_type);                  
@@ -479,7 +455,6 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
 
     xrel = sqrt(x2rel);  //distance between the centers of the projectile and target
 
-
     hx = (dy*Viz - dz*Viy);                     //angular momentum vector xrel X Vrel
     hy = (dz*Vix - dx*Viz);
     hz = (dx*Viy - dy*Vix);
@@ -512,8 +487,6 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     const double mubar = 0.36;    // user defined variable, default taken from paper
     double rho1 = 1000;         //constant density in kg/cm^3, DO NOT CHANGE
     if (r->G == 1){rho1 = 1.684e12;}
-    
-
 
     double Rc1 = pow((M_tot*3)/(4*M_PI*rho1), 1./3.);  //Chambers Eq. 4, combined radius of target and projectile with constant density
     double Q0 = .8*cstar*M_PI*rho1*r->G*pow(Rc1,2);  //Chambers Eq. 3, critical value of impact energy for head-on collisions
@@ -530,7 +503,6 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     else{
         Mlr = .1*M_tot*pow(qratio/1.8, -1.5);  //Chambers Eq.8
     }
-
 
     double separation_distance = 4 * (targ_r + imp_r);  //seperation distance of fragments.  Should be userdefined but this is what chambers uses
 ///POPULATE STRUCT OBJECTS
@@ -563,7 +535,6 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
         params->collision_type = 1;
         merge(r,c, params);
     }
-
 
     else{
         if (Vi <= V_esc){
