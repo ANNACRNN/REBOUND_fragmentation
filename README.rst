@@ -9,6 +9,7 @@ The bulk composition tracking code tracks the composition change as a function o
 To run: composition_tracking.py must be installed and compiled with 'chmod +x composition_tracking.py' in the same file as the input files.
 
 Input files: composition_input.txt, collision_report.txt
+
 Output files: composition_output.txt
 
 Format of input files:
