@@ -2,21 +2,26 @@
 
 import numpy as np
 import time
+import sys
 
 start_time = time.time()
 def track_composition():
     f = open("composition_input.txt", 'r')
     init_compositions = [line.split() for line in f.readlines()]
+    for line in init_compositions:
+        try:
+            sum([float(x) for x in line[2:]]) == 1.0
+        except:
+            print ('ERROR: Realative abundances do not add up to 1.0')
+            sys.exit(1)
     try:
         init_hashes = [int(x[0]) for x in init_compositions]
     except:
-        print ('ERROR: Incorrect format of composition_input.txt')
-        return
+        init_hashes = [x[0].value for x in init_compositions]
     no_species = len(init_compositions[0])-2
     file = open("collision_report.txt", 'r')
     blocks = file.read().split("\n")
     blocks = [block for block in blocks if len(block) > 0]
-
     compositions = init_compositions
     for i in range(len(blocks)):
         block = blocks[i].split()
@@ -46,19 +51,28 @@ def track_composition():
             for j in range(no_frags):
                 frag_data = [frag_hashes[j], frag_masses[j]]+last_projectile_abundances
                 compositions.append(frag_data)
-                if any(n < 0 for n in frag_data) == True:
-                    print ('Negative value encountered in frag data at', time)
+                try:
+                     any(n < 0 for n in frag_data) == False
+                except:
+                    print ('ERROR: Negative value encountered in frag data at', time)
+                    sys.exit(1)
         if collision_type == 3 or collision_type == 4: #partial errosion, target abundances stay the same
             mass_lost = last_target_mass-target_mass
             frag_abundances = [(float(last_target_abundances[i])*mass_lost+float(last_projectile_abundances[i])*last_proj_mass)/np.sum(frag_masses) for i in range(no_species)]
             for j in range(no_frags):
                 frag_data = [frag_hashes[j], frag_masses[j]]+frag_abundances
-                if any(n < 0 for n in frag_data) == True:
-                    print ('Negative value encountered in frag data at', time)
+                try:
+                     any(n < 0 for n in frag_data) == False
+                except:
+                    print ('ERROR: Negative value encountered in frag data at', time)
+                    sys.exit(1)
                 compositions.append(frag_data)
         compositions[targ_idx][1]=target_mass
-        if any(n < 0 for n in compositions[targ_idx]) == True:
-            print ('Negative value encountered at', time)
+        try: 
+            any(n < 0 for n in compositions[targ_idx]) == False
+        except:
+            print ('ERROR: Negative value encountered at', time)
+            sys.exit(1)
 
     
     return compositions
@@ -74,9 +88,3 @@ write_output(track_composition())
 
 
 print("--- %s seconds ---" % (time.time() - start_time))
-
-f = open("runtimes.txt", "a")
-f.write(str(time.time() - start_time)+', ')
-f.close()
-
-
