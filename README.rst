@@ -23,7 +23,7 @@ Format of input files:
 Format of output files:
 	composition_output.txt will output the final compositions of all the bodies.  The format of the output file will be in the same form as the composition_input.txt file: body hash in first column, body mass in second column, body mass fraction of specie j in the 2+jth column.
   
- If either code is used please cite Childs & Steffen 2021 (submitted November, MNRAS).
+ If either code is used please cite Childs & Steffen 2022 (MNRAS).
  
  For questions, comments or bugs please email childsa6@unlv.nevada.edu
 	
