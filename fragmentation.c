@@ -1,4 +1,4 @@
-#define min_frag_mass 1.4e-8
+double min_frag_mass = 1.4e-8;
 int tot_no_frags = 0;  //if restarting a simulation this needs to be changed to the last number of frags in the simulation, otherwise new fragments added will rewrite exisiting frags
 
 
