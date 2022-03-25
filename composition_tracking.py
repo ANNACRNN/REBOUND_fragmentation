@@ -39,7 +39,7 @@ def track_composition():
         last_target_abundances = compositions[targ_idx][-no_species:]   
         last_projectile_abundances = compositions[proj_idx][-no_species:] 
         no_frags = int((len(block)-5)/2)
-        frag_hashes = [block[i*2+3] for i in range(1,no_frags+1)]
+        frag_hashes = [int(block[i*2+3]) for i in range(1,no_frags+1)]
         frag_masses = [float(block[i*2+4]) for i in range(1,no_frags+1)]
         if collision_type == 1: #perfect merger
             for i in range(no_species):
