@@ -25,5 +25,8 @@ Format of output files:
   
  If either code is used please cite Childs & Steffen 2022 (MNRAS).
  
- For questions, comments or bugs please email childsa6@unlv.nevada.edu
+ For questions, comments or bugs please email anna.childs@northwestern.edu
+
+Acknowledgements:
+I thank Hanno Rein for his assistance in the develoment of this code.  I thank Noah Ferich, Agustín Dugaro and Haniyeh Tajer for assistance with debugging.
 	
