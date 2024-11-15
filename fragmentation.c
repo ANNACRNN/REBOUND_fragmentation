@@ -58,7 +58,7 @@ double get_radii(double m, double rho){
 void add_fragments(struct reb_simulation* const r, struct reb_collision c, struct collision_params *params){
     struct reb_particle* target = &(r->particles[params->target]);
     struct reb_particle* projectile = &(r->particles[params->projectile]);
-    struct reb_particle com = reb_get_com_of_pair(*target, *projectile);
+    struct reb_particle com = reb_particle_com_of_pair(*target, *projectile);
     double initial_mass = target -> m + projectile -> m;
     double remaining_mass = initial_mass - params->Mlr;
     double rho = target->m/(4./3*M_PI*pow(target ->r, 3));
@@ -82,7 +82,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     double mxsum[3] = {0,0,0};
     double mvsum[3] = {0,0,0};
     //target gets mass of Mlr and is assigned COM position and velocity;
-    target -> lastcollision = r->t;
+    target -> last_collision = r->t;
     target -> m = params->Mlr;
     target -> r = get_radii(params->Mlr, rho);
     target->x = com.x;
@@ -160,8 +160,8 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         mvsum[0] += Slr1.m*Slr1.vx;
         mvsum[1] += Slr1.m*Slr1.vy;   
         mvsum[2] += Slr1.m*Slr1.vz;
-        Slr1.lastcollision = r->t;
-        reb_add(r, Slr1);
+        Slr1.last_collision = r->t;
+        reb_simulation_add(r, Slr1);
     }
 
 
@@ -179,7 +179,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         fragment.vz = com.vz + fragment_velocity*(cos(theta_inc*j)*unit_viz + sin(theta_inc*j)*oz);
 
         fragment.r = get_radii(frag_mass, rho);
-        fragment.lastcollision = r->t;
+        fragment.last_collision = r->t;
         sprintf(hash, "FRAG%d", i);
         fragment.hash = reb_hash(hash);
         printf("%s hash, mass:      %u %e\n", hash, fragment.hash, fragment.m);
@@ -191,7 +191,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         mvsum[1] += fragment.m*fragment.vy;    
         mvsum[2] += fragment.m*fragment.vz;
 
-        reb_add(r, fragment); 
+        reb_simulation_add(r, fragment); 
                                 }
     tot_no_frags += big_frags+no_frags;
 
@@ -214,14 +214,14 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     for (int i=(tot_no_frags-new_bodies)+1; i<(tot_no_frags+1); i++){ 
         char frag[10];
         sprintf(frag, "FRAG%d", i);
-        double mass_fraction = reb_get_particle_by_hash(r, reb_hash(frag))->m/initial_mass;
-        reb_get_particle_by_hash(r, reb_hash(frag))->x += xoff[0]*mass_fraction;
-        reb_get_particle_by_hash(r, reb_hash(frag))->y += xoff[1]*mass_fraction;
-        reb_get_particle_by_hash(r, reb_hash(frag))->z += xoff[2]*mass_fraction;
+        double mass_fraction = reb_simulation_particle_by_hash(r, reb_hash(frag))->m/initial_mass;
+        reb_simulation_particle_by_hash(r, reb_hash(frag))->x += xoff[0]*mass_fraction;
+        reb_simulation_particle_by_hash(r, reb_hash(frag))->y += xoff[1]*mass_fraction;
+        reb_simulation_particle_by_hash(r, reb_hash(frag))->z += xoff[2]*mass_fraction;
 
-        reb_get_particle_by_hash(r, reb_hash(frag))->vx += voff[0]*mass_fraction;
-        reb_get_particle_by_hash(r, reb_hash(frag))->vy += voff[1]*mass_fraction;
-        reb_get_particle_by_hash(r, reb_hash(frag))->vz += voff[2]*mass_fraction;
+        reb_simulation_particle_by_hash(r, reb_hash(frag))->vx += voff[0]*mass_fraction;
+        reb_simulation_particle_by_hash(r, reb_hash(frag))->vy += voff[1]*mass_fraction;
+        reb_simulation_particle_by_hash(r, reb_hash(frag))->vz += voff[2]*mass_fraction;
     }
 
     return;
@@ -243,7 +243,7 @@ void merge(struct reb_simulation* const r, struct reb_collision c, struct collis
     pi->z  = (pi->z*pi->m + pj->z*pj->m)*invmass;
     pi->m  = pi->m + pj->m;
     pi->r  = pow((3*pi->m)/(4*M_PI*targ_rho),1./3.);
-    pi->lastcollision = r->t;
+    pi->last_collision = r->t;
 
 
     return; // 
@@ -373,7 +373,7 @@ struct collision_params* create_collision_params(){
 
 
 int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_collision c){
-    if (r->particles[c.p1].lastcollision==r->t || r->particles[c.p2].lastcollision==r->t) return 0;
+    if (r->particles[c.p1].last_collision==r->t || r->particles[c.p2].last_collision==r->t) return 0;
     int i = c.p1;
     int j = c.p2; 
     if (i<j) return 0;      //only return one collision callback
