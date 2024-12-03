@@ -1,3 +1,11 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <math.h>
+#include "/home/acc298/rebound/src/rebound.h"
+
+
+
 double min_frag_mass = 1.4e-8;
 int tot_no_frags = 0;  //if restarting a simulation this needs to be changed to the last number of frags in the simulation, otherwise new fragments added will rewrite exisiting frags
 
@@ -293,27 +301,43 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
             return swap;
         }
 
-        else{
-            double Mlr_dag = (beta*target->m + projectile->m)/10 * pow(Q/(1.8*Q_star), -1.5);
-            if (Q < 1.8*Q_star){
-                Mlr_dag = (beta*targ_m + imp_m)*(1 - Q/ (2*Q_star));
-            }
+        else{ //vi>v_crit
+            if (params->Mlr<targ_m){ //Target is being eroded, projectile should also fragment
+                if (targ_m+imp_m <= 2*min_frag_mass){ //not enough mass to produce new fragments
+                    printf("ELASTIC BOUNCE\n");
+                    params->collision_type=0;
+                    reb_collision_resolve_hardsphere(r,c);
+                    swap = 0;
+                                                       }
+                else{
+                    params->Mlr = MAX(params->Mlr, min_frag_mass);
+                    printf("GRAZING PARTIAL EROSION\n");
+                    params->collision_type = 3;
+                    add_fragments(r,c,params);
+                    }
+                                    }
+            else{ //Mlr > Mt, either a hit and run or an elastic bounce
+                double Mlr_dag = (beta*target->m + projectile->m)/10 * pow(Q/(1.8*Q_star), -1.5);
+                if (Q < 1.8*Q_star){
+                    Mlr_dag = (beta*targ_m + imp_m)*(1 - Q/ (2*Q_star));
+                }
 
             double projectile_mass_accreted = params->Mlr - targ_m;
             double new_projectile_mass = projectile->m - projectile_mass_accreted;
             Mlr_dag = MAX(Mlr_dag, min_frag_mass);
             if (new_projectile_mass-Mlr_dag < min_frag_mass){
-                printf("ELASTIC BOUNCE\n");
-                params->collision_type=0;
-                reb_collision_resolve_hardsphere(r,c);
-                swap = 0;
+                    printf("ELASTIC BOUNCE\n");
+                    params->collision_type=0;
+                    reb_collision_resolve_hardsphere(r,c);
+                    swap = 0;
+                                                            }
+                else{
+                    params->Mslr = Mlr_dag;
+                    printf("HIT AND RUN\n");
+                    params->collision_type = 2;
+                    add_fragments(r,c,params);
                     }
-            else {
-                params->Mslr = Mlr_dag;
-                printf("HIT AND RUN\n");
-                params->collision_type = 2;
-                add_fragments(r,c,params);}
-            
+                }
         return swap;
         }
     }
@@ -499,38 +523,38 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
         merge(r,c, params);
                     }
     else{  //Vi > V_esc
-        if (M_tot - params->Mlr < min_frag_mass){
-            params->collision_type = 1;
-            printf("EFFECTIVELY MERGED\n");
-            merge(r,c,params);
-            print_collision_array(r,c,params);  
-            return swap;
-                                             }
-        else{ // M_tot - params->Mlr >= min_frag_mass; fragments will be produced unless it is a graze and merge or elastic bounce 
-            if (params->Mlr < targ_m){
+        if (b<targ_r){ //non-grazing regime
+            if (M_tot - params->Mlr < min_frag_mass){
+                params->collision_type = 1;
+                printf("EFFECTIVELY MERGED\n");
+                merge(r,c,params);
+                print_collision_array(r,c,params);  
+                                                     }
+            else{ // M_tot - params->Mlr >= min_frag_mass; fragments will be produced unless it is a graze and merge or elastic bounce 
+                if (params->Mlr < targ_m){
                     if (params->Mlr <= 0.1*targ_m){
                         printf("SUPER-CATASTROPHIC\n");
                         params->collision_type = 4;
                         params->Mlr = MAX(Mlr, min_frag_mass);
                         add_fragments(r,c,params);
-                            }
+                                                   }
                     else{
                         printf("PARTIAL EROSION\n");
                         params->collision_type = 3;
                         params->Mlr = MAX(Mlr, min_frag_mass);
                         add_fragments(r,c,params);
-                            }
-                                    }
-                else{  //if (params->Mlr >= targ_m)
-                        if (b >= targ_r){  //Chambers Eq. 9, hit and run criteria, grazing regime
-                            swap = hit_and_run(r,c,params);
-                                } 
-                        else{
+                        }
+                                          }
+                                    
+                else{  //(params->Mlr >= targ_m)
                             printf("PARTIAL ACCRETION\n");
                             params->collision_type = 2;
                             add_fragments(r,c,params);
-                                        }
-                                }
+                    }
+                }
+                     }
+        else{ // b > b_crit, grazing regime
+            swap = hit_and_run(r,c,params); //swap gets redefined here as it may be set to 0 in the case of a bounce
             }
         }
                                 
