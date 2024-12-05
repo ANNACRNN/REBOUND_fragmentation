@@ -303,7 +303,7 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
 
         else{ //vi>v_crit
             if (params->Mlr<targ_m){ //Target is being eroded, projectile should also fragment
-                if (targ_m+imp_m <= 2*min_frag_mass){ //not enough mass to produce new fragments
+                if (targ_m+imp_m - params->Mlr <= min_frag_mass){ //not enough mass to produce new fragments
                     printf("ELASTIC BOUNCE\n");
                     params->collision_type=0;
                     reb_collision_resolve_hardsphere(r,c);
