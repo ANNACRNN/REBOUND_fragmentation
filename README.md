@@ -8,7 +8,7 @@ To use the code, copy and paste fragmentation.c into the problem.c file you wish
 
 The `fragmentation.c` code will automatically produce a `collision_report.txt` which details the time of every collision, the bodies involved, how the collision was resolved, and how many fragments were produced.  Collision outcomes are assigned a numerical value: 0=elastic bounce, 1=merger, 2=partial accretion, 3=partial erosion, 4=supercatastrophic disruption.  This report is necessary for running the bulk composition tracking code.
 
-![alt text](Decisiontree.png)
+
 
 # Bulk composition tracking code
 
