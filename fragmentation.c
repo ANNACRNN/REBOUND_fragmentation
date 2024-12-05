@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
-#include "/home/acc298/rebound/src/rebound.h"
+#include "../..//src/rebound.h"
 
 
 
@@ -302,15 +302,15 @@ int hit_and_run(struct reb_simulation* const r, struct reb_collision c, struct c
         }
 
         else{ //vi>v_crit
+            params->Mlr = MAX(params->Mlr, min_frag_mass); //Cannot be smaller than min fragment mass
             if (params->Mlr<targ_m){ //Target is being eroded, projectile should also fragment
                 if (targ_m+imp_m - params->Mlr <= min_frag_mass){ //not enough mass to produce new fragments
                     printf("ELASTIC BOUNCE\n");
                     params->collision_type=0;
                     reb_collision_resolve_hardsphere(r,c);
                     swap = 0;
-                                                       }
+                                              }
                 else{
-                    params->Mlr = MAX(params->Mlr, min_frag_mass);
                     printf("GRAZING PARTIAL EROSION\n");
                     params->collision_type = 3;
                     add_fragments(r,c,params);
@@ -506,7 +506,7 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
     params->vrel = sqrt(v2rel);
     params->Mslr = 0;
     params->xrel = xrel;
-    params->Mlr = Mlr;
+    params->Mlr = Mlr; //Mlr cannot be smaller the minimum fragment mass
 
 
     printf("Mp/Mt:    %0.4f\n", imp_m/targ_m);
