@@ -103,6 +103,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     
     if (no_frags == 1 && params->Mlr <= frag_mass){
         target->m = frag_mass;
+        target -> r = get_radii(frag_mass, rho);
         frag_mass = params->Mlr;
     }
 
