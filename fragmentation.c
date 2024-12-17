@@ -158,7 +158,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         Slr1.vz = com.vz + fragment_velocity*unit_viz;
 
         Slr1.r = get_radii(Slr1.m, rho);
-        sprintf(hash,"FRAG%d", tot_no_frags+1);
+        snprintf(hash,"FRAG%d", tot_no_frags+1);
         Slr1.hash = reb_hash(hash);
         printf("%s hash, mass:      %u %e\n", hash, Slr1.hash, Slr1.m);
         mxsum[0] += Slr1.m*Slr1.x;
