@@ -86,7 +86,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     params->no_frags = new_bodies;
     
 
-    char hash[10];
+    char hash[20];
     double mxsum[3] = {0,0,0};
     double mvsum[3] = {0,0,0};
     //target gets mass of Mlr and is assigned COM position and velocity;
