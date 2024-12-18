@@ -529,7 +529,6 @@ int reb_collision_resolve_fragment(struct reb_simulation* const r, struct reb_co
                 params->collision_type = 1;
                 printf("EFFECTIVELY MERGED\n");
                 merge(r,c,params);
-                print_collision_array(r,c,params);  
                                                      }
             else{ // M_tot - params->Mlr >= min_frag_mass; fragments will be produced unless it is a graze and merge or elastic bounce 
                 if (params->Mlr < targ_m){
