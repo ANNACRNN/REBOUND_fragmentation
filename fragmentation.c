@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
-#include "../../src/rebound.h"
+#include "rebound.h"
 
 
 
@@ -86,7 +86,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     params->no_frags = new_bodies;
     
 
-    char hash[20];
+    char hash[32];
     double mxsum[3] = {0,0,0};
     double mvsum[3] = {0,0,0};
     //target gets mass of Mlr and is assigned COM position and velocity;
@@ -159,7 +159,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         Slr1.vz = com.vz + fragment_velocity*unit_viz;
 
         Slr1.r = get_radii(Slr1.m, rho);
-        snprintf(hash,"FRAG%d", tot_no_frags+1);
+        snprintf(hash, sizeof(hash), "FRAG%d", tot_no_frags + 1);
         Slr1.hash = reb_hash(hash);
         printf("%s hash, mass:      %u %e\n", hash, Slr1.hash, Slr1.m);
         mxsum[0] += Slr1.m*Slr1.x;
@@ -189,7 +189,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
 
         fragment.r = get_radii(frag_mass, rho);
         fragment.last_collision = r->t;
-        sprintf(hash, "FRAG%d", i);
+        snprintf(hash, sizeof(hash), "FRAG%d", tot_no_frags + 1);
         fragment.hash = reb_hash(hash);
         printf("%s hash, mass:      %u %e\n", hash, fragment.hash, fragment.m);
         mxsum[0] +=fragment.m*fragment.x;
@@ -220,8 +220,8 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
     target -> vy += voff[1]*target->m/initial_mass; 
     target -> vz += voff[2]*target->m/initial_mass; 
 
-    for (int i=(tot_no_frags-new_bodies)+1; i<(tot_no_frags+1); i++){ 
-        char frag[10];
+    for (int i=(tot_no_frags-new_bodies)+1; i<(tot_no_frags+1); i++){  //update fragment positions and velocities to conserve momentum
+        char frag[32];
         sprintf(frag, "FRAG%d", i);
         double mass_fraction = reb_simulation_particle_by_hash(r, reb_hash(frag))->m/initial_mass;
         reb_simulation_particle_by_hash(r, reb_hash(frag))->x += xoff[0]*mass_fraction;
@@ -391,7 +391,7 @@ void init_collision_params(struct collision_params* params){
 }
 
 struct collision_params* create_collision_params(){
-    struct collision_params* params = calloc(1,sizeof(struct reb_simulation));
+    struct collision_params* params = calloc(1,sizeof(struct collision_params));
     init_collision_params(params);
     return params;
 }
