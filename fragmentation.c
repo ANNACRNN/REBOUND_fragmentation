@@ -171,6 +171,7 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         mvsum[2] += Slr1.m*Slr1.vz;
         Slr1.last_collision = r->t;
         reb_simulation_add(r, Slr1);
+        tot_no_frags += 1;
     }
 
 
@@ -201,9 +202,8 @@ void add_fragments(struct reb_simulation* const r, struct reb_collision c, struc
         mvsum[2] += fragment.m*fragment.vz;
 
         reb_simulation_add(r, fragment); 
+        tot_no_frags += 1;
                                 }
-    tot_no_frags += big_frags+no_frags;
-
 
     //Ensure momentum is conserved
 
